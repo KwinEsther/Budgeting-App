@@ -1,6 +1,3 @@
-// Budgeting App Smart Contract in Clarity 2.0
-// This contract enables users to set budgets, log expenses, and track remaining budget.
-
 (define-map budgets
     ((user principal))  ;; Unique identifier for each user
     ((total-budget uint) (remaining-budget uint)))
