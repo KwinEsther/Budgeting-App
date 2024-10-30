@@ -18,7 +18,7 @@
     }  
     {
         amount: uint,
-        category: (string-ascii 32),
+        category: (string-ascii 9),
         timestamp: uint
     }
 )
@@ -30,7 +30,7 @@
     }
     {
         amount: uint,
-        source: (string-ascii 32),
+        source: (string-ascii 9),
         timestamp: uint
     }
 )
@@ -47,6 +47,49 @@
 (define-constant ERR-NO-BUDGET-FOUND (err u104))
 (define-constant ERR-EXPENSE-NOT-FOUND (err u105))
 (define-constant ERR-INCOME-NOT-FOUND (err u106))
+(define-constant ERR-INVALID-CATEGORY (err u107))
+(define-constant ERR-INVALID-SOURCE (err u108))
+
+;; Valid categories and sources lists
+(define-constant VALID-CATEGORIES (list 
+    "food"
+    "housing"
+    "transport"
+    "utilities"
+    "health"
+    "leisure"
+    "other"
+))
+
+(define-constant VALID-INCOME-SOURCES (list
+    "salary"
+    "business"
+    "invest"
+    "freelance"
+    "other"
+))
+
+;; Helper Functions
+(define-private (is-valid-string (input (string-ascii 10)))
+    (and
+        (not (is-eq input ""))
+        (<= (len input) u10)
+    )
+)
+
+(define-private (is-valid-category (category (string-ascii 9)))
+    (and
+        (is-valid-string category)
+        (is-some (index-of VALID-CATEGORIES category))
+    )
+)
+
+(define-private (is-valid-source (source (string-ascii 9)))
+    (and
+        (is-valid-string source)
+        (is-some (index-of VALID-INCOME-SOURCES source))
+    )
+)
 
 ;; Public Functions
 ;; Function to set or update a budget for a user
@@ -70,11 +113,12 @@
 )
 
 ;; Function to add an expense
-(define-public (add-expense (amount uint) (category (string-ascii 32)))
+(define-public (add-expense (amount uint) (category (string-ascii 9)))
     (let ((expense-id (var-get expense-counter)))
         (begin
             (asserts! (is-some (map-get? budgets {user: tx-sender})) ERR-BUDGET-NOT-SET)
             (asserts! (> amount u0) ERR-INVALID-AMOUNT)
+            (asserts! (is-valid-category category) ERR-INVALID-CATEGORY)
 
             (let ((current-budget (unwrap-panic (map-get? budgets {user: tx-sender}))))
                 (asserts! (>= (get remaining-budget current-budget) amount) ERR-INSUFFICIENT-BUDGET)
@@ -111,10 +155,11 @@
 )
 
 ;; Function to add income
-(define-public (add-income (amount uint) (source (string-ascii 32)))
+(define-public (add-income (amount uint) (source (string-ascii 9)))
     (let ((income-id (var-get income-counter)))
         (begin
             (asserts! (> amount u0) ERR-INVALID-AMOUNT)
+            (asserts! (is-valid-source source) ERR-INVALID-SOURCE)
 
             ;; Initialize budget if not exists
             (match (map-get? budgets {user: tx-sender})
@@ -190,6 +235,16 @@
     )
 )
 
+;; Function to get valid categories
+(define-read-only (get-valid-categories)
+    (ok VALID-CATEGORIES)
+)
+
+;; Function to get valid income sources
+(define-read-only (get-valid-income-sources)
+    (ok VALID-INCOME-SOURCES)
+)
+
 ;; Function to reset the budget and all expenses for a user
 (define-public (reset-budget)
     (begin
@@ -197,5 +252,3 @@
         (ok "Budget reset successful")
     )
 )
-
-
